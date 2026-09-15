@@ -10,10 +10,17 @@ if [ "$(id -u)" -ne 0 ]; then
     exit 1
 fi
 
+# Check if the server version argument was provided
+if [ $# -lt 1 ] || [ -z "$1" ]; then
+    echo "Usage: $0 <SERVER_VERSION>" >&2
+    echo "Example: $0 bedrock-server-1.26.51.1" >&2
+    exit 1
+fi
+
 # ==========================================
 # CONFIGURATION
 # ==========================================
-SERVER_VERSION="bedrock-server-1.26.51.1"
+SERVER_VERSION="$1"
 BASE_DIR="/bedrock"
 SERVICE_NAME="bedrock"
 
@@ -51,7 +58,7 @@ rm -rf "${SERVER_VERSION}"
 
 # 2. Download the new version using your exact URL schema
 log "Downloading Minecraft Bedrock Server..."
-wget --quiet --show-progress "https://www.minecraft.net/bedrockdedicatedserver/bin-linux/${SERVER_VERSION}.zip" \
+wget --quiet --show-progress "https://minecraft.net{SERVER_VERSION}.zip" \
     || error_exit "Failed to download version ${SERVER_VERSION}.zip"
 
 # 3. Extract the server files
