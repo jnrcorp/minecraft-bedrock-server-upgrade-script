@@ -13,14 +13,22 @@ fi
 # Check if the server version argument was provided
 if [ $# -lt 1 ] || [ -z "$1" ]; then
     echo "Usage: $0 <SERVER_VERSION>" >&2
-    echo "Example: $0 bedrock-server-1.26.51.1" >&2
+    echo "Example: $0 1.26.51.1" >&2
+    echo "    OR: $0 bedrock-server-1.26.51.1" >&2
     exit 1
 fi
 
 # ==========================================
-# CONFIGURATION
+# CONFIGURATION & FORMATTING
 # ==========================================
-SERVER_VERSION="$1"
+# If the user passed just "1.26.51.1", normalize it to "bedrock-server-1.26.51.1"
+INPUT_ARG="$1"
+if [[ "$INPUT_ARG" =~ ^[0-9] ]]; then
+    SERVER_VERSION="bedrock-server-${INPUT_ARG}"
+else
+    SERVER_VERSION="${INPUT_ARG}"
+fi
+
 BASE_DIR="/bedrock"
 SERVICE_NAME="bedrock"
 
@@ -56,10 +64,10 @@ fi
 rm -f "${SERVER_VERSION}.zip"
 rm -rf "${SERVER_VERSION}"
 
-# 2. Download the new version using your exact URL schema
-log "Downloading Minecraft Bedrock Server..."
-wget --quiet --show-progress "https://minecraft.net{SERVER_VERSION}.zip" \
-    || error_exit "Failed to download version ${SERVER_VERSION}.zip"
+# 2. Download the new version using the corrected, validated URL schema
+log "Downloading Minecraft Bedrock Server from Mojang..."
+wget --quiet --show-progress "https://www.minecraft.net/bedrockdedicatedserver/bin-linux/${SERVER_VERSION}.zip" \
+    || error_exit "Failed to download version from URL: https://www.minecraft.net/bedrockdedicatedserver/bin-linux/${SERVER_VERSION}.zip"
 
 # 3. Extract the server files
 log "Extracting files..."
