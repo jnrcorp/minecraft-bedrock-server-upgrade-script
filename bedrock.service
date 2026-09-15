@@ -1,0 +1,15 @@
+[Unit]
+Description=Minecraft Bedrock Server
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/bedrock/current
+ExecStart=/bin/sh -c 'LD_LIBRARY_PATH=. ./bedrock_server'
+Restart=on-failure
+RestartSec=5
+Nice=1
+
+[Install]
+WantedBy=multi-user.target
