@@ -1,3 +1,5 @@
+# /etc/systemd/system/bedrock.service
+
 [Unit]
 Description=Minecraft Bedrock Server
 After=network.target
