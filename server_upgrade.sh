@@ -29,8 +29,19 @@ else
     SERVER_VERSION="${INPUT_ARG}"
 fi
 
+# Reject anything that isn't a plain "bedrock-server-<version>" token. Without
+# this, SERVER_VERSION flows unchecked into rm -rf and path construction below,
+# so a value like "../../etc" would let this root-run script delete arbitrary
+# directories relative to BASE_DIR.
+if [[ ! "$SERVER_VERSION" =~ ^bedrock-server-[0-9]+(\.[0-9]+)*$ ]]; then
+    echo "[ERROR] Invalid server version: '${INPUT_ARG}'" >&2
+    echo "Expected a version like 1.26.51.1 or bedrock-server-1.26.51.1" >&2
+    exit 1
+fi
+
 BASE_DIR="/bedrock"
 SERVICE_NAME="bedrock"
+LOCK_FILE="${BASE_DIR}/.upgrade.lock"
 
 # ==========================================
 # HELPER FUNCTIONS
@@ -47,10 +58,22 @@ error_exit() {
 # Ensure we run from the correct directory
 cd "$BASE_DIR" || error_exit "Could not change directory to $BASE_DIR"
 
+# Prevent two copies of this script (e.g. a cron job and a manual run) from
+# racing on the same download/extract/symlink-swap sequence.
+exec 200>"$LOCK_FILE"
+flock -n 200 || error_exit "Another instance of this script is already running (lock: $LOCK_FILE)."
+
 # ==========================================
 # MAIN EXECUTION
 # ==========================================
 log "Starting Bedrock Server update to ${SERVER_VERSION}..."
+
+# Remember what 'current' points to so we can roll back if the new version
+# fails to come up.
+PREVIOUS_TARGET=""
+if [ -L current ]; then
+    PREVIOUS_TARGET="$(readlink current)"
+fi
 
 # 1. Stop the service safely
 log "Stopping ${SERVICE_NAME} service..."
@@ -104,6 +127,23 @@ mv -fT current_tmp current
 # 6. Start service and check status
 log "Starting ${SERVICE_NAME} service..."
 systemctl start "$SERVICE_NAME"
+
+# Give the server a moment to come up, then confirm it's actually running
+# before declaring success. 'systemctl start' only confirms the unit was
+# accepted, not that bedrock_server stayed alive.
+sleep 5
+if ! systemctl is-active --quiet "$SERVICE_NAME"; then
+    log "ERROR: ${SERVICE_NAME} failed to stay running on ${SERVER_VERSION}."
+    if [ -n "$PREVIOUS_TARGET" ]; then
+        log "Rolling back 'current' symlink to ${PREVIOUS_TARGET}..."
+        ln -s "$PREVIOUS_TARGET" current_tmp
+        mv -fT current_tmp current
+        systemctl start "$SERVICE_NAME" || log "WARNING: Failed to restart service on rolled-back version."
+    else
+        log "WARNING: No previous version to roll back to."
+    fi
+    error_exit "Update to ${SERVER_VERSION} failed; see above for rollback status."
+fi
 
 # 7. Cleanup download artifact
 rm -f "${SERVER_VERSION}.zip"
