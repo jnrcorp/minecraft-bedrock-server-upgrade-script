@@ -55,6 +55,12 @@ error_exit() {
     exit 1
 }
 
+# Fail fast with a clear message instead of a raw "command not found" partway
+# through the upgrade.
+for cmd in wget unzip systemctl flock; do
+    command -v "$cmd" >/dev/null 2>&1 || error_exit "Required command '$cmd' not found in PATH."
+done
+
 # Ensure we run from the correct directory
 cd "$BASE_DIR" || error_exit "Could not change directory to $BASE_DIR"
 
