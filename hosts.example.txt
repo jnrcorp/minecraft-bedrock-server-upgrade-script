@@ -1,0 +1,4 @@
+# Copy to hosts.txt and list your Bedrock servers, one per line (IP or hostname).
+# Blank lines and # comments are ignored. hosts.txt is gitignored.
+192.168.1.10   # survival
+192.168.1.11   # creative
